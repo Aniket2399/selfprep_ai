@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { use, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { vapi } from '@/lib/vapi.sdk';
+import { interviewer } from '@/constants';
 
 enum CallStatus {
   INACTIVE = 'INACTIVE',
@@ -24,7 +25,7 @@ interface SavedMessage {
   content: string;
 }
 
-const Agent = ({ userName, userId, type }: AgentProps) => {
+const Agent = ({ userName, userId, type, interviewId, questions }: AgentProps) => {
   const router = useRouter();
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [callStatus, setCallStatus] = useState<CallStatus>(CallStatus.INACTIVE);
@@ -60,18 +61,40 @@ const Agent = ({ userName, userId, type }: AgentProps) => {
     };
   }, []);
 
+  const handleGenerateFeedback = async (messages: SavedMessage[]) => {
+    console.log('Generate Feedback');
+
+    const { success, id} = {
+      success: true,
+      id: 'feedback-id',
+    }
+
+    if(success && id ) {
+      router.push(`/interview/${interviewId}/feedback`);
+    } else {
+      console.error('Failed to generate feedback');
+      router.push('/');
+    }
+  }
+
   // Redirect after call finishes
   useEffect(() => {
     if (callStatus === CallStatus.FINISHED) {
-      router.push('/');
+      if(type === 'generate') {
+        router.push('/');
+      } else {
+        handleGenerateFeedback(messages);
+      }
+      
     }
-  }, [callStatus, router]);
+  }, [messages, type, callStatus, userId]);
 
   // Start workflow call
   const handleCall = async () => {
     setCallStatus(CallStatus.CONNECTING);
-    try {
-       await vapi.start(
+     
+    if(type === 'generate'){
+      await vapi.start(
         undefined,
         undefined,
         undefined,
@@ -83,10 +106,23 @@ const Agent = ({ userName, userId, type }: AgentProps) => {
           },
         }
       );
-    } catch (err) {
-      console.error('Failed to start workflow:', JSON.stringify(err, null, 2));
-      setCallStatus(CallStatus.INACTIVE);
+    } else {
+      let formattedQuestions = '';
+
+      if(questions) {
+        formattedQuestions = questions.map((question) => `- ${question}`).join('\n');
+      }
+
+      await vapi.start(interviewer, 
+        {
+          variableValues: {
+            questions: formattedQuestions,
+          },
+        }
+      );
     }
+       
+    
   };
 
   const handleDisconnect = () => {

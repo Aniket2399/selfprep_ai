@@ -63,7 +63,7 @@ If you encounter issues or need help, join our **Discord community** where learn
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/self-prep.git
+git clone https://github.com/Aniket2399/selfprep_ai.git
 cd self-prep
 ```
 
